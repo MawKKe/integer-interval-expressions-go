@@ -12,6 +12,8 @@ values lie in any of the specified intervals. The parsed expressions do not cont
 any actual integer sequences, which allows for small memory usage and support for
 infinite ranges
 
+[![Go](https://github.com/MawKKe/integer-interval-expressions-go/workflows/Go/badge.svg)](https://github.com/MawKKe/integer-interval-expressions-go/actions/workflows/go.yml)
+
 # Install
 
 Add the library into your project:
