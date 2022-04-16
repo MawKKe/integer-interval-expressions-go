@@ -18,15 +18,19 @@ infinite ranges
 
 Add the library into your project:
 
-    $ go get github.com/MawKKe/integer-interval-expressions-go@latest
+```Shell
+$ go get github.com/MawKKe/integer-interval-expressions-go@latest
+```
 
 then import the library in your application:
 
-    import (
-        ...
-        intervals "github.com/MawKKe/integer-interval-expressions-go"
-        ...
-    )
+```Go
+import (
+    ...
+    intervals "github.com/MawKKe/integer-interval-expressions-go"
+    ...
+)
+```
 
 # Usage
 
