@@ -1,5 +1,5 @@
 # integer-interval-expressions-go
-A Go library for parsing integer interval expressions such as `1,3-5,7-`
+A Go library for parsing integer interval expressions of the form `1,3-5,7-`
 
 These kinds of expressions are commonly seen in application contexts such as page selectors
 in print dialogs, or field selector in the CLI `cut` tool, and so on. This library

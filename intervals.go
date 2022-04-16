@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// integerintervalexpressions is for parsing expressions of the form '1,3-5,7-'
+// integerintervalexpressions is a library for parsing integer interval
+// expressions of the form '1,3-5,7-'
 package integerintervalexpressions
 
 import (
