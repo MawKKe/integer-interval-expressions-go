@@ -14,6 +14,17 @@
 
 // Package integerintervalexpressions is a library for parsing integer interval
 // expressions of the form '1,3-5,7-'
+//
+// Expressions of this kind are commonly seen in user-facing application contexts
+// such as page selectors in print dialogs, field selector in the CLI `cut` tool,
+// and so on. This library provides support for parsing and utilizing such
+// expressions in wide variety of application contexts.
+//
+// Internally, the library parses an input string into an abstract logical
+// expression, which can be then evaluated with integer values to determine
+// whether those values lie in any of the specified intervals. The parsed
+// expressions do not contain any actual integer sequences, which allows for
+// small memory usage and support for infinite ranges
 package integerintervalexpressions
 
 import (
@@ -42,8 +53,7 @@ func (se subExpression) String() string {
 
 // Expression is an abstract type containing a sequence of subexpressions
 // describing integer intervals. An Expression instance can only be constructed
-// by ParseExpression() from a valid expression string; see the README.md for
-// information about the syntax.
+// by ParseExpression() from a valid expression string.
 //
 // The Expression only has one useful method: Matches(int), which tells you whether
 // the given value lies inside any of the intervals contained within the expression.
@@ -54,14 +64,20 @@ type Expression struct {
 
 // Matches determines whether an integer is contained within the intervals expression
 //
-// For example, given si := ParseInterval("1-3,5,9-10,13-"), the expressions
-// si.Matches(2) and si.Matches(15) return true, while si.Matches(4) will return false.
+// For example, given
+//   expr, _ := ParseExpression("1,3-5,7-")
+// the expressions
+//   expr.Matches(1)
+//   expr.Matches(4)
+//   expr.Matches(9)
+// evaluate to true, while
+//   expr.Matches(2)
+//   expr.Matches(6)
+// evaluate to false
 //
 // This method does not require the Expression to be normalized, although
 // normalized instances *should* allow for quicker evaluation due to reduced
-// number of interval elements inside Expression (hint: do not begin
-// to optimize prematurely, you are unlikely to ever need Expression of
-// such sizes that this becomes an issue).
+// number of interval elements in the Expression; see .Normalize().
 func (si Expression) Matches(val int) bool {
 	for _, itv := range si.intervals {
 		if val >= itv.start {
@@ -89,6 +105,8 @@ func DefaultParseOptions() ParseOptions {
 // Normalize reduces overlapping expressions to minimum set of intervals;
 // some new interval elements may be totally new, while others are dropped.
 // For example, expression '1-4,2-5' should normalize to '1-5'.
+// The method returns a new normalized Expression derived from the current
+// one.
 func (si Expression) Normalize() Expression {
 	if len(si.intervals) <= 1 {
 		return si
@@ -137,15 +155,17 @@ func (si Expression) Normalize() Expression {
 }
 
 // Convert Expression back to textual format.
-// Note the following case:
 //
-//   Expr, _ := ParseExpression(Input) // assume input is valid
+// Consider the following situation
+//
+//   // Assume Input is valid for brevity
+//   Expr, _ := ParseExpression(Input)
 //   Norm    := Expr.Normalize()
 //
-// now Expr.String() should resemble Input, HOWEVER if Expr != Norm, then
-// Norm.String() likely nothing close to Input. That is, a normalized
-// Expression is unlikely to serialize back to the original input string unless
-// the input was written in normalized form to begin with.
+// Now, the result of Expr.String() should resemble Input. However, if Expr !=
+// Norm, then Norm.String() likely differs greatly from Input. That is, a
+// normalized Expression is unlikely to serialize back to the original input
+// string (unless the input was written in normalized form to begin with).
 func (si Expression) String() string {
 	var ivs []string
 	for _, itv := range si.intervals {
@@ -154,32 +174,67 @@ func (si Expression) String() string {
 	return strings.Join(ivs, si.opts.Delimiter)
 }
 
-// ParseExpression calls ParseExpressionWithOptions with default options (see DefaultParseOptions())
+// ParseExpression calls ParseExpressionWithOptions() with default options (see DefaultParseOptions())
 func ParseExpression(input string) (Expression, error) {
 	return ParseExpressionWithOptions(input, DefaultParseOptions())
 }
 
-// ParseExpressionWithOptions attempts to extract list of interval expressions from 'input'.
-// A single interval is expressed with:
-// - a single integer (e.g '7')
-// - a single integer and a dash (e.g. '1-', meaning 1,2,3,4,...) It is basically 'x ... inf'
-// - a single integer, a dash, and another integer (e.g. '1-4', meaning 1,2,3,4). It is an error
-//   to supply expression 'a-b' where a > b.
-// In all expressions the integers are assumed positive or 0.
-// NOTE: this library does not support notation '-x' for open-ended interval -inf...x.
+// ParseExpressionWithOptions attempts to extract intervals expressions from input.
 //
-// Multiple intervals are expressed by placing them between the delimiter character, which is
-// by default ",". For example, input '0,1,4-7,9,11-12' means integer values 0,1,4,5,6,9,11,12.
+// ---
 //
-// The input string can contain 0 or more interval expressions, which means
-// that empty string is valid input. It also is valid to pass empty string
-// between two commas; these empty interval expressions are skipped.
+// An intervals expression consists of sequence of individual subexpressions.
 //
-// In case of problems in parsing, the function returns an error and an empty Expression{}.
-// The errors are constructed with fmt.Errorf, and contain description of what exactly is wrong
-// with the given input.
+// A subexpression describes a continuous range of integral values (i.e an
+// interval).  A single subexpression string contains one of the following:
 //
-// Note: the input is not guaranteed to be normalized; for that you should use Normalize()
+// - an single integer, for example "1": only the value 1.
+//
+// - an integer, a dash, and another integer, for example "3-5": values 3,4 and 5.
+//
+// - an integer and a dash, for example "7-": denotes all integers from 7 to
+// infinity (i.e 7,8,9,...)
+//
+// The intervals expression is consists of subexpressions joined by a delimiter
+// character.  By default, a comma (",") is used as the delimiter (although a
+// custom delimiter can be specified via the "ParseOptions" structure). For
+// example, the expression "1,3-5,7-" can be understood to contain three
+// subexpressions: "1", "3-5" and "7-".
+//
+// Note that the interval expression need not contain any subexpressions, which
+// means that "" and ",,,," are valid inputs. However, both of these parse into
+// an Expression structure containing 0 subexpressions and are, as such,
+// rather useless.
+//
+// Semantically, a single subexpression is a predicate, and combining multiple
+// predicates denotes a logical disjunction. The above expression thus states that
+// we have three predicates and an overall expression:
+//
+//     func a(x int) { return x == 1 }             // "1"
+//     func b(x int) { return x >= 3 && x <= 5 }   // "3-5"
+//     func c(x int) { return x >= 7 }             // "7-"
+//     func expr(x int) { return a(x) || b(x) || c(x) }
+//
+// (However note that in the library internals the expressions are not actually
+// represented this way.)
+//
+// Note that the library does not support parsing expressions with spaces
+// inside subexpressions, or between the subexpressions and delimiters. This may
+// change in future version.
+//
+// ---
+//
+// Return values:
+//
+// In case of invalid/malformed input, the function returns an error and an
+// empty Expression{}. The errors are constructed with fmt.Errorf, and should
+// contain description of what exactly is wrong with the given input.
+//
+// A valid input string is parsed into a populated Expression, which
+// can then be evaluated using the associated methods.
+//
+// NOTE: The resulting Expression is not guaranteed to be normalized, unless
+// you set opts.PostProcessNormalize=true, or manually call .Normalize() on the result.
 func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, error) {
 	intervalsRaw := strings.Split(input, opts.Delimiter)
 	var intervals []subExpression
