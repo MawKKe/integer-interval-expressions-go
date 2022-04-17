@@ -195,6 +195,8 @@ func ParseExpression(input string) (Expression, error) {
 // - an integer and a dash, for example "7-": denotes all integers from 7 to
 // infinity (i.e 7,8,9,...)
 //
+// Currently the parser supports only positive integer values in subexpressions.
+//
 // The intervals expression is consists of subexpressions joined by a delimiter
 // character.  By default, a comma (",") is used as the delimiter (although a
 // custom delimiter can be specified via the "ParseOptions" structure). For
