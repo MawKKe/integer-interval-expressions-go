@@ -93,13 +93,25 @@ func (si Expression) Matches(val int) bool {
 type ParseOptions struct {
 	Delimiter            string
 	PostProcessNormalize bool
+
+	// Allow parsing of empty input expressions strings (e.g "" or "   ")?
+	// If true, parser will return error on empty input.
+	// If false, empty input will result in Expression that will matche nothing.
+	AllowEmptyExpression bool
+
 	//openEnd bool // 1-3 stands for 1,2,3 or 1,2?
 	//greedy  bool // 2-4,2,2- -> which is actually dominant?
 }
 
 // DefaultParseOptions returns some sensible set of options for default usage.
 func DefaultParseOptions() ParseOptions {
-	return ParseOptions{Delimiter: ",", PostProcessNormalize: false}
+	return ParseOptions{
+		Delimiter:            ",",
+		PostProcessNormalize: false,
+		// Do not allow empty expressions by default; empty expressions
+		// match nothing, and likely confuse users.
+		AllowEmptyExpression: false,
+	}
 }
 
 // Normalize reduces overlapping expressions to minimum set of intervals;
@@ -281,6 +293,11 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 			intervals = append(intervals, subExpression{start: int(a), count: (int(b) - int(a)) + 1})
 		}
 	}
+
+	if len(intervals) == 0 && !opts.AllowEmptyExpression {
+		return Expression{}, fmt.Errorf("current options prohibit empty expressions")
+	}
+
 	si := Expression{intervals: intervals, opts: opts}
 	if opts.PostProcessNormalize {
 		return si.Normalize(), nil

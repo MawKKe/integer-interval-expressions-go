@@ -52,15 +52,19 @@ type testCase struct {
 
 var testCases []testCase = []testCase{
 	{
+		// note: current default options prohibit empty expressions.
+		// TODO test with AllowEmptyExpressions=true ?
 		name:      "empty",
 		input:     "",
-		shouldErr: false,
+		shouldErr: true,
 		expected:  Expression{}, // note: not same as Expression{intervals: []subExpression}
 	},
 	{
+		// note: current default options prohibit empty expressions.
+		// TODO test with AllowEmptyExpressions=true ?
 		name:      "empty-commas",
 		input:     ",,,,",
-		shouldErr: false,
+		shouldErr: true,
 		expected:  Expression{}, // note: not same as Expression{intervals: []subExpression}
 	},
 	{
