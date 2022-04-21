@@ -62,6 +62,16 @@ type Expression struct {
 	opts      ParseOptions // original options used for parsing this Expression
 }
 
+// IsEmpty determines whether the expression is empty. An empty Expression contains
+// no subexpressions and thus matches with nothing, i.e Matches(x) == false for all x.
+//
+// NOTE: You may instruct the expression parser to reject empty input expressions by
+// setting ParseOptions.AllowEmptyExpression to false; the current default options
+// (see DefaultParseOptions()) set the field to false.
+func (si Expression) IsEmpty() bool {
+	return len(si.intervals) == 0
+}
+
 // Matches determines whether an integer is contained within the intervals expression
 //
 // For example, given
@@ -294,11 +304,12 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 		}
 	}
 
-	if len(intervals) == 0 && !opts.AllowEmptyExpression {
+	si := Expression{intervals: intervals, opts: opts}
+
+	if si.IsEmpty() && !opts.AllowEmptyExpression {
 		return Expression{}, fmt.Errorf("current options prohibit empty expressions")
 	}
 
-	si := Expression{intervals: intervals, opts: opts}
 	if opts.PostProcessNormalize {
 		return si.Normalize(), nil
 	}

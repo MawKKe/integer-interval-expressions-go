@@ -197,6 +197,60 @@ var testCases []testCase = []testCase{
 	},
 }
 
+func TestIsEmpty(t *testing.T) {
+	optsAllow := ParseOptions{Delimiter: ",", AllowEmptyExpression: true}
+	optsDisallow := ParseOptions{Delimiter: ",", AllowEmptyExpression: false}
+
+	cases := []struct {
+		name        string
+		opts        ParseOptions
+		input       string
+		shouldErr   bool
+		expectEmpty bool
+	}{
+		{
+			name:        "empty-allowed",
+			opts:        optsAllow,
+			input:       "",
+			shouldErr:   false,
+			expectEmpty: true,
+		},
+		{
+			name:        "non-empty-allowed",
+			opts:        optsAllow,
+			input:       "1-3",
+			shouldErr:   false,
+			expectEmpty: false,
+		},
+		{
+			name:        "empty-disallowed",
+			opts:        optsDisallow,
+			input:       "",
+			shouldErr:   true,
+			expectEmpty: true,
+		},
+		{
+			name:        "non-empty-disallowed",
+			opts:        optsDisallow,
+			input:       "1-3",
+			shouldErr:   false,
+			expectEmpty: false,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			expr, err := ParseExpressionWithOptions(test.input, test.opts)
+			if test.shouldErr && err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if a, b := test.expectEmpty, expr.IsEmpty(); a != b {
+				t.Fatalf("expected IsEmpty() == %v, got %v", b, a)
+			}
+		})
+	}
+}
+
 func TestParseExpression(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
