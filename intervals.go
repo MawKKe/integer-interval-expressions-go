@@ -260,6 +260,9 @@ func ParseExpression(input string) (Expression, error) {
 // NOTE: The resulting Expression is not guaranteed to be normalized, unless
 // you set opts.PostProcessNormalize=true, or manually call .Normalize() on the result.
 func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, error) {
+	if opts.Delimiter == "" {
+		return Expression{}, fmt.Errorf("ParseOptions.Delimiter is empty")
+	}
 	intervalsRaw := strings.Split(input, opts.Delimiter)
 	var intervals []subExpression
 	for _, intervalStr := range intervalsRaw {
