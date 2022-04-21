@@ -68,8 +68,8 @@ type Expression struct {
 // NOTE: You may instruct the expression parser to reject empty input expressions by
 // setting ParseOptions.AllowEmptyExpression to false; the current default options
 // (see DefaultParseOptions()) set the field to false.
-func (si Expression) IsEmpty() bool {
-	return len(si.intervals) == 0
+func (e Expression) IsEmpty() bool {
+	return len(e.intervals) == 0
 }
 
 // Matches determines whether an integer is contained within the intervals expression
@@ -88,8 +88,8 @@ func (si Expression) IsEmpty() bool {
 // This method does not require the Expression to be normalized, although
 // normalized instances *should* allow for quicker evaluation due to reduced
 // number of interval elements in the Expression; see .Normalize().
-func (si Expression) Matches(val int) bool {
-	for _, itv := range si.intervals {
+func (e Expression) Matches(val int) bool {
+	for _, itv := range e.intervals {
 		if val >= itv.start {
 			if itv.count == 0 || val <= (itv.start+itv.count-1) {
 				return true
@@ -129,22 +129,22 @@ func DefaultParseOptions() ParseOptions {
 // For example, expression '1-4,2-5' should normalize to '1-5'.
 // The method returns a new normalized Expression derived from the current
 // one.
-func (si Expression) Normalize() Expression {
-	if len(si.intervals) <= 1 {
-		return si
+func (e Expression) Normalize() Expression {
+	if len(e.intervals) <= 1 {
+		return e
 	}
 
 	// this code assumes that now intervals are ordered by start value
-	sort.Slice(si.intervals, func(a int, b int) bool {
-		return si.intervals[a].start < si.intervals[b].start
+	sort.Slice(e.intervals, func(a int, b int) bool {
+		return e.intervals[a].start < e.intervals[b].start
 	})
 
 	var norm []subExpression
 
-	current := si.intervals[0]
+	current := e.intervals[0]
 
-	for i := 1; i < len(si.intervals); i++ {
-		next := si.intervals[i]
+	for i := 1; i < len(e.intervals); i++ {
+		next := e.intervals[i]
 		if current.count == 0 {
 			// extends to infinity, we can skip
 			break
@@ -188,12 +188,12 @@ func (si Expression) Normalize() Expression {
 // Norm, then Norm.String() likely differs greatly from Input. That is, a
 // normalized Expression is unlikely to serialize back to the original input
 // string (unless the input was written in normalized form to begin with).
-func (si Expression) String() string {
+func (e Expression) String() string {
 	var ivs []string
-	for _, itv := range si.intervals {
+	for _, itv := range e.intervals {
 		ivs = append(ivs, itv.String())
 	}
-	return strings.Join(ivs, si.opts.Delimiter)
+	return strings.Join(ivs, e.opts.Delimiter)
 }
 
 // ParseExpression calls ParseExpressionWithOptions() with default options (see DefaultParseOptions())
@@ -304,14 +304,14 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 		}
 	}
 
-	si := Expression{intervals: intervals, opts: opts}
+	e := Expression{intervals: intervals, opts: opts}
 
-	if si.IsEmpty() && !opts.AllowEmptyExpression {
+	if e.IsEmpty() && !opts.AllowEmptyExpression {
 		return Expression{}, fmt.Errorf("current options prohibit empty expressions")
 	}
 
 	if opts.PostProcessNormalize {
-		return si.Normalize(), nil
+		return e.Normalize(), nil
 	}
-	return si, nil
+	return e, nil
 }
