@@ -245,7 +245,7 @@ func TestMatchesNone(t *testing.T) {
 				t.Fatalf("expected error, got nil")
 			}
 			if a, b := test.expectMatchesNone, expr.MatchesNone(); a != b {
-				t.Fatalf("expected MatchesNone() == %v, got %v", b, a)
+				t.Fatalf("expected MatchesNone() == %v, got %v", a, b)
 			}
 		})
 	}
