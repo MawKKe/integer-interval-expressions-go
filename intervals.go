@@ -36,11 +36,16 @@ import (
 
 // subExpression represents a single continuous interval
 type subExpression struct {
-	start int
-	count int
+	start    int
+	count    int
+	matchAll bool
 }
 
 func (se subExpression) String() string {
+	if se.matchAll {
+		return "*"
+	}
+
 	switch se.count {
 	case 0:
 		return fmt.Sprintf("%d-", se.start)
@@ -72,6 +77,17 @@ func (e Expression) IsEmpty() bool {
 	return len(e.intervals) == 0
 }
 
+// MatchesAll determines whether the Expression will match every possible input
+// i.e if MatchesAll() == true; then Matches(x) == true for all x.
+func (e Expression) MatchesAll() bool {
+	for _, sub := range e.intervals {
+		if sub.matchAll {
+			return true
+		}
+	}
+	return false
+}
+
 // Matches determines whether an integer is contained within the intervals expression
 //
 // For example, given
@@ -90,6 +106,9 @@ func (e Expression) IsEmpty() bool {
 // number of interval elements in the Expression; see .Normalize().
 func (e Expression) Matches(val int) bool {
 	for _, itv := range e.intervals {
+		if itv.matchAll {
+			return true
+		}
 		if val >= itv.start {
 			if itv.count == 0 || val <= (itv.start+itv.count-1) {
 				return true
@@ -132,6 +151,13 @@ func DefaultParseOptions() ParseOptions {
 func (e Expression) Normalize() Expression {
 	if len(e.intervals) <= 1 {
 		return e
+	}
+
+	// short circuit by "*"
+	// TODO MatchesAll() loops the intervals, but so do we below. Figure out a
+	// way to integrate this check into the main loop below?
+	if e.MatchesAll() {
+		return Expression{intervals: []subExpression{{matchAll: true}}, opts: e.opts}
 	}
 
 	// this code assumes that now intervals are ordered by start value
@@ -219,6 +245,10 @@ func ParseExpression(input string) (Expression, error) {
 //
 // Currently the parser supports only positive integer values in subexpressions.
 //
+// Additionally, the parser recognizes a subexpressions equal to "*" and
+// interprets them as "match everything". Note that such subexpression will
+// dominate over all others, short-circuiting the whole expression to "true".
+//
 // The intervals expression is consists of subexpressions joined by a delimiter
 // character.  By default, a comma (",") is used as the delimiter (although a
 // custom delimiter can be specified via the "ParseOptions" structure). For
@@ -276,6 +306,14 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 
 		if n != 1 && n != 2 {
 			return Expression{}, fmt.Errorf("invalid interval expression: %q", intervalStr)
+		}
+
+		// matchall character encountered; this short-circuits all other expressions
+		// but we parse them like normal anyways. Only when evaluating the expressio,
+		// will the effect be noticed.
+		if n == 1 && split[0] == "*" {
+			intervals = append(intervals, subExpression{matchAll: true})
+			continue
 		}
 
 		a, err := strconv.ParseInt(split[0], 10, 0)

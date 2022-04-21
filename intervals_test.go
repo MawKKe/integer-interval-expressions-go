@@ -251,6 +251,51 @@ func TestIsEmpty(t *testing.T) {
 	}
 }
 
+func TestMatchesAll(t *testing.T) {
+	cases := []struct {
+		input          string
+		matchAllExpect bool
+	}{
+		{
+			input:          "*",
+			matchAllExpect: true,
+		},
+		{
+			input:          "1,3-5,7-",
+			matchAllExpect: false,
+		},
+		{
+			input:          "*,1,3-5,7-",
+			matchAllExpect: true,
+		},
+		{
+			input:          "1,*,3-5,7-",
+			matchAllExpect: true,
+		},
+		{
+			input:          "1,3-5,*,7-",
+			matchAllExpect: true,
+		},
+		{
+			input:          "1,3-5,7-,*",
+			matchAllExpect: true,
+		},
+		{
+			input:          "*,*,*,*",
+			matchAllExpect: true,
+		},
+	}
+	for _, test := range cases {
+		expr, err := ParseExpression(test.input)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if a, b := test.matchAllExpect, expr.MatchesAll(); a != b {
+			t.Fatalf("expected MatchesAll() == %v, got %v", a, b)
+		}
+	}
+}
+
 func TestParseExpression(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
@@ -414,6 +459,21 @@ var normalizeTests []normalizeTest = []normalizeTest{
 			subExpression{start: 1, count: 0},
 		}},
 	},
+	normalizeTest{
+		// 1,5-7,2-,9-10,17-
+		name: "match-all-1",
+		input: Expression{intervals: []subExpression{
+			subExpression{start: 1, count: 1},
+			subExpression{start: 5, count: 2},
+			subExpression{matchAll: true},
+			subExpression{start: 2, count: 0},
+			subExpression{start: 9, count: 2},
+			subExpression{start: 17, count: 0},
+		}},
+		expect: Expression{intervals: []subExpression{
+			subExpression{matchAll: true},
+		}},
+	},
 }
 
 func TestNormalize(t *testing.T) {
@@ -430,21 +490,23 @@ func TestNormalize(t *testing.T) {
 func TestExpressionStringer(t *testing.T) {
 	// TODO add better tests
 
-	expect := "1-3,4,10-"
+	inputs := []string{"1-3,4,10-", "1,3-5,*,7-"}
 
-	si, err := ParseExpression(expect)
+	for _, input := range inputs {
+		expr, err := ParseExpression(input)
 
-	if err != nil {
-		t.Fatal(err)
-	}
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	got := si.String()
+		str := expr.String()
 
-	if got != expect {
-		t.Fatalf("Expected: %q, got: %q", expect, got)
-	}
+		if str != input {
+			t.Fatalf("expected: %q, got: %q", input, str)
+		}
 
-	if out := fmt.Sprintf("%v", si); out != expect {
-		t.Fatalf("Expected: %q, got: %q", expect, out)
+		if out := fmt.Sprintf("%v", expr); out != input {
+			t.Fatalf("Expected: %q, got: %q", input, out)
+		}
 	}
 }
