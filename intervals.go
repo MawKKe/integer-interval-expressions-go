@@ -151,11 +151,13 @@ func DefaultParseOptions() ParseOptions {
 // The method returns a new normalized Expression derived from the current
 // one.
 func (e Expression) Normalize() Expression {
-	if len(e.intervals) <= 1 {
+	// short-circuit by empty expression
+	// no need to do anything, just return the existing expression
+	if e.MatchesNone() {
 		return e
 	}
 
-	// short circuit by "*"
+	// short-circuit by "*"
 	// TODO MatchesAll() loops the intervals, but so do we below. Figure out a
 	// way to integrate this check into the main loop below?
 	if e.MatchesAll() {
