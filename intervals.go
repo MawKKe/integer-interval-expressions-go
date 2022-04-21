@@ -300,52 +300,13 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 	intervalsRaw := strings.Split(input, opts.Delimiter)
 	var intervals []subExpression
 	for _, intervalStr := range intervalsRaw {
-		if intervalStr == "" {
+		if intervalStr != "" {
 			// empty expression '1,,3'.. not very pretty but not invalid
-			continue
-		}
-		split := strings.Split(intervalStr, "-")
-
-		n := len(split)
-
-		if n != 1 && n != 2 {
-			return Expression{}, fmt.Errorf("invalid interval expression: %q", intervalStr)
-		}
-
-		// matchall character encountered; this short-circuits all other expressions
-		// but we parse them like normal anyways. Only when evaluating the expressio,
-		// will the effect be noticed.
-		if n == 1 && split[0] == "*" {
-			intervals = append(intervals, subExpression{matchAll: true})
-			continue
-		}
-
-		a, err := strconv.ParseInt(split[0], 10, 0)
-		if err != nil {
-			return Expression{}, fmt.Errorf("invalid value for interval start: %w", err)
-		}
-
-		// single digit, interval of length 1
-		if n == 1 {
-			intervals = append(intervals, subExpression{start: int(a), count: 1})
-			continue
-		}
-
-		// implicit n == 2 cases
-
-		// digit and a dash: 'x-', interval length infinite (internally denoted with 0)
-		if split[1] == "" {
-			intervals = append(intervals, subExpression{start: int(a), count: 0})
-			continue
-		}
-
-		// two digits separated by dash
-		if b, err := strconv.ParseInt(split[1], 10, 0); err != nil {
-			return Expression{}, fmt.Errorf("invalid value for interval end: %w", err)
-		} else if b < a {
-			return Expression{}, fmt.Errorf("invalid interval 'a-b' where a > b: %q", intervalStr)
-		} else {
-			intervals = append(intervals, subExpression{start: int(a), count: (int(b) - int(a)) + 1})
+			interval, err := parseSubExpression(intervalStr)
+			if err != nil {
+				return Expression{}, err
+			}
+			intervals = append(intervals, interval)
 		}
 	}
 
@@ -359,4 +320,47 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 		return e.Normalize(), nil
 	}
 	return e, nil
+}
+
+func parseSubExpression(subInput string) (subExpression, error) {
+	split := strings.Split(subInput, "-")
+
+	n := len(split)
+
+	if n != 1 && n != 2 {
+		return subExpression{}, fmt.Errorf("invalid interval expression: %q", subInput)
+	}
+
+	// matchall character encountered; this short-circuits all other expressions
+	// but we parse them like normal anyways. Only when evaluating the expressio,
+	// will the effect be noticed.
+	if n == 1 && split[0] == "*" {
+		return subExpression{matchAll: true}, nil
+	}
+
+	a, err := strconv.ParseInt(split[0], 10, 0)
+	if err != nil {
+		return subExpression{}, fmt.Errorf("invalid value for interval start: %w", err)
+	}
+
+	// single digit, interval of length 1
+	if n == 1 {
+		return subExpression{start: int(a), count: 1}, nil
+	}
+
+	// implicit n == 2 cases
+
+	// digit and a dash: 'x-', interval length infinite (internally denoted with 0)
+	if split[1] == "" {
+		return subExpression{start: int(a), count: 0}, nil
+	}
+
+	// two digits separated by dash
+	if b, err := strconv.ParseInt(split[1], 10, 0); err != nil {
+		return subExpression{}, fmt.Errorf("invalid value for interval end: %w", err)
+	} else if b < a {
+		return subExpression{}, fmt.Errorf("invalid interval 'a-b' where a > b: %q", subInput)
+	} else {
+		return subExpression{start: int(a), count: (int(b) - int(a)) + 1}, nil
+	}
 }
