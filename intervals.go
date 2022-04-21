@@ -67,13 +67,15 @@ type Expression struct {
 	opts      ParseOptions // original options used for parsing this Expression
 }
 
-// IsEmpty determines whether the expression is empty. An empty Expression contains
-// no subexpressions and thus matches with nothing, i.e Matches(x) == false for all x.
+// MatchesNone determines whether the Expression will ever match anything.
+// i.e if MatchesNone() == true; then Matches(x) == false for all x.
 //
-// NOTE: You may instruct the expression parser to reject empty input expressions by
-// setting ParseOptions.AllowEmptyExpression to false; the current default options
-// (see DefaultParseOptions()) set the field to false.
-func (e Expression) IsEmpty() bool {
+// Such Expressions are the result of input expression strings that contain no
+// actual subexpressions. You may instruct the expression parser to reject
+// such input expressions by setting ParseOptions.AllowEmptyExpression to
+// false; the current default options also have this field set as false (see
+// DefaultParseOptions()).
+func (e Expression) MatchesNone() bool {
 	return len(e.intervals) == 0
 }
 
@@ -347,7 +349,7 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 
 	e := Expression{intervals: intervals, opts: opts}
 
-	if e.IsEmpty() && !opts.AllowEmptyExpression {
+	if e.MatchesNone() && !opts.AllowEmptyExpression {
 		return Expression{}, fmt.Errorf("current options prohibit empty expressions")
 	}
 

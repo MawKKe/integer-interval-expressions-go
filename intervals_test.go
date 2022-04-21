@@ -197,44 +197,44 @@ var testCases []testCase = []testCase{
 	},
 }
 
-func TestIsEmpty(t *testing.T) {
+func TestMatchesNone(t *testing.T) {
 	optsAllow := ParseOptions{Delimiter: ",", AllowEmptyExpression: true}
 	optsDisallow := ParseOptions{Delimiter: ",", AllowEmptyExpression: false}
 
 	cases := []struct {
-		name        string
-		opts        ParseOptions
-		input       string
-		shouldErr   bool
-		expectEmpty bool
+		name              string
+		opts              ParseOptions
+		input             string
+		shouldErr         bool
+		expectMatchesNone bool
 	}{
 		{
-			name:        "empty-allowed",
-			opts:        optsAllow,
-			input:       "",
-			shouldErr:   false,
-			expectEmpty: true,
+			name:              "empty-allowed",
+			opts:              optsAllow,
+			input:             "",
+			shouldErr:         false,
+			expectMatchesNone: true,
 		},
 		{
-			name:        "non-empty-allowed",
-			opts:        optsAllow,
-			input:       "1-3",
-			shouldErr:   false,
-			expectEmpty: false,
+			name:              "non-empty-allowed",
+			opts:              optsAllow,
+			input:             "1-3",
+			shouldErr:         false,
+			expectMatchesNone: false,
 		},
 		{
-			name:        "empty-disallowed",
-			opts:        optsDisallow,
-			input:       "",
-			shouldErr:   true,
-			expectEmpty: true,
+			name:              "empty-disallowed",
+			opts:              optsDisallow,
+			input:             "",
+			shouldErr:         true,
+			expectMatchesNone: true,
 		},
 		{
-			name:        "non-empty-disallowed",
-			opts:        optsDisallow,
-			input:       "1-3",
-			shouldErr:   false,
-			expectEmpty: false,
+			name:              "non-empty-disallowed",
+			opts:              optsDisallow,
+			input:             "1-3",
+			shouldErr:         false,
+			expectMatchesNone: false,
 		},
 	}
 
@@ -244,8 +244,8 @@ func TestIsEmpty(t *testing.T) {
 			if test.shouldErr && err == nil {
 				t.Fatalf("expected error, got nil")
 			}
-			if a, b := test.expectEmpty, expr.IsEmpty(); a != b {
-				t.Fatalf("expected IsEmpty() == %v, got %v", b, a)
+			if a, b := test.expectMatchesNone, expr.MatchesNone(); a != b {
+				t.Fatalf("expected MatchesNone() == %v, got %v", b, a)
 			}
 		})
 	}
