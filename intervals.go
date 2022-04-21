@@ -126,8 +126,8 @@ type ParseOptions struct {
 	PostProcessNormalize bool
 
 	// Allow parsing of empty input expressions strings (e.g "" or "   ")?
-	// If true, parser will return error on empty input.
-	// If false, empty input will result in Expression that will matche nothing.
+	// If false, parser will return error on empty input.
+	// If true, empty input will result in Expression that will match nothing.
 	AllowEmptyExpression bool
 
 	//openEnd bool // 1-3 stands for 1,2,3 or 1,2?
