@@ -78,8 +78,28 @@ var testCases []testCase = []testCase{
 		},
 	},
 	{
+		name:      "single-interval-single-digit-exact-0-with-whitespace",
+		input:     " 0 ",
+		shouldErr: false,
+		expected: Expression{
+			intervals: []subExpression{
+				subExpression{start: 0, count: 1},
+			},
+		},
+	},
+	{
 		name:      "single-interval-single-digit-open-1",
 		input:     "1-",
+		shouldErr: false,
+		expected: Expression{
+			intervals: []subExpression{
+				subExpression{start: 1, count: 0}, // 0 count means inf
+			},
+		},
+	},
+	{
+		name:      "single-interval-single-digit-open-1-with-whitespace",
+		input:     " 1 - ",
 		shouldErr: false,
 		expected: Expression{
 			intervals: []subExpression{
@@ -98,8 +118,29 @@ var testCases []testCase = []testCase{
 		},
 	},
 	{
+		name:      "single-interval-double-digit-5-7-with-whitespace",
+		input:     " 5  -    7  ",
+		shouldErr: false,
+		expected: Expression{
+			intervals: []subExpression{
+				subExpression{start: 5, count: 3},
+			},
+		},
+	},
+	{
 		name:      "multiple-interval-double-digit-5-7",
 		input:     "5-7,9-10",
+		shouldErr: false,
+		expected: Expression{
+			intervals: []subExpression{
+				subExpression{start: 5, count: 3},
+				subExpression{start: 9, count: 2},
+			},
+		},
+	},
+	{
+		name:      "multiple-interval-double-digit-5-7-with-whitespace",
+		input:     "5- 7 , 9 -10",
 		shouldErr: false,
 		expected: Expression{
 			intervals: []subExpression{

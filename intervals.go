@@ -298,7 +298,11 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 	if opts.Delimiter == "" {
 		return Expression{}, fmt.Errorf("ParseOptions.Delimiter is empty")
 	}
-	intervalsRaw := strings.Split(input, opts.Delimiter)
+	r, err := regexp.Compile(`\s*` + regexp.QuoteMeta(opts.Delimiter) + `\s*`)
+	if err != nil {
+		return Expression{}, fmt.Errorf("Invalid delimiter: %w", err)
+	}
+	intervalsRaw := r.Split(input, -1)
 	var intervals []subExpression
 	for _, intervalStr := range intervalsRaw {
 		if intervalStr != "" {
@@ -325,8 +329,8 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 
 var subRegexMatchall = regexp.MustCompile(`^\s*\*\s*$`)
 var subRegexSingle = regexp.MustCompile(`^\s*(?P<start>\d+)\s*$`)
-var subRegexDual = regexp.MustCompile(`^\s*(?P<start>\d+)-(?P<end>\d+)$`)
-var subRegexHalfOpen = regexp.MustCompile(`^\s*(?P<start>\d+)(-)$`)
+var subRegexDual = regexp.MustCompile(`^\s*(?P<start>\d+)\s*-\s*(?P<end>\d+)\s*$`)
+var subRegexHalfOpen = regexp.MustCompile(`^\s*(?P<start>\d+)\s*-\s*$`)
 
 func parseSubExpression(subInput string) (subExpression, error) {
 	if subRegexMatchall.MatchString(subInput) {
