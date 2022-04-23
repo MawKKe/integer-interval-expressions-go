@@ -204,7 +204,7 @@ func (e Expression) Normalize() Expression {
 		}
 	}
 	norm = append(norm, current)
-	return Expression{intervals: norm}
+	return Expression{intervals: norm, opts: e.opts}
 }
 
 // Convert Expression back to textual format.

@@ -541,6 +541,18 @@ func TestNormalize(t *testing.T) {
 	}
 }
 
+func TestNormalizeOptionsPropagate(t *testing.T) {
+	// test that opts field is propagated during Normalize() call to the new Expression.
+	optsIn := ParseOptions{Delimiter: "irrelevant", AllowEmptyExpression: true, PostProcessNormalize: false}
+	optsOut := ParseOptions{Delimiter: "irrelevant", AllowEmptyExpression: true, PostProcessNormalize: false}
+	input := Expression{opts: optsIn, intervals: []subExpression{}}
+	expect := Expression{opts: optsOut, intervals: []subExpression{}}
+	got := input.Normalize()
+	if !reflect.DeepEqual(expect, got) {
+		t.Fatalf("expect:\n\t%#v\ngot:\n\t%#v", expect, got)
+	}
+}
+
 func TestExpressionStringer(t *testing.T) {
 	// TODO add better tests
 
