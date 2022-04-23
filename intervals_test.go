@@ -195,6 +195,36 @@ var testCases []testCase = []testCase{
 		shouldErr: true,
 		expected:  Expression{},
 	},
+	{
+		name:      "multiple-interval-invalid-order",
+		input:     "7-5",
+		shouldErr: true,
+		expected:  Expression{},
+	},
+	{
+		name:      "single-value-invalid-too-large",
+		input:     "1234567890123456789012345678901234567890",
+		shouldErr: true,
+		expected:  Expression{},
+	},
+	{
+		name:      "single-value-half-open-invalid-too-large",
+		input:     "1234567890123456789012345678901234567890-",
+		shouldErr: true,
+		expected:  Expression{},
+	},
+	{
+		name:      "multiple-value-invalid-start-value-too-large",
+		input:     "1234567890123456789012345678901234567890-1",
+		shouldErr: true,
+		expected:  Expression{},
+	},
+	{
+		name:      "multiple-value-invalid-end-value-too-large",
+		input:     "1-1234567890123456789012345678901234567890",
+		shouldErr: true,
+		expected:  Expression{},
+	},
 }
 
 func TestMatchesNone(t *testing.T) {
@@ -293,6 +323,15 @@ func TestMatchesAll(t *testing.T) {
 		if a, b := test.matchAllExpect, expr.MatchesAll(); a != b {
 			t.Fatalf("expected MatchesAll() == %v, got %v", a, b)
 		}
+		if !test.matchAllExpect {
+			continue
+		}
+		// this is not a comprehensive test, but how could we even test that?
+		for i := -1000; i < 1000; i++ {
+			if !expr.Matches(i) {
+				t.Errorf("matchall did not match: %d", i)
+			}
+		}
 	}
 }
 
@@ -315,172 +354,187 @@ func TestParseExpression(t *testing.T) {
 	}
 }
 
-type normalizeTest struct {
-	name   string
-	input  Expression
-	expect Expression
-}
-
-var normalizeTests []normalizeTest = []normalizeTest{
-	normalizeTest{
-		// 0 elements
-		name:   "simple-empty",
-		input:  Expression{},
-		expect: Expression{},
-	},
-	normalizeTest{
-		// 1 element
-		name: "simple-single-individual",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 2, count: 1},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 2, count: 1},
-		}},
-	},
-	normalizeTest{
-		// 3 elements
-		name: "simple-individual-consecutive-ordered",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 1},
-			subExpression{start: 2, count: 1},
-			subExpression{start: 3, count: 1},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 3},
-		}},
-	},
-	normalizeTest{
-		// 3 elements
-		name: "simple-individual-consecutive-ordered-with-gaps",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 1},
-			subExpression{start: 3, count: 1},
-			subExpression{start: 10, count: 1},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 1},
-			subExpression{start: 3, count: 1},
-			subExpression{start: 10, count: 1},
-		}},
-	},
-	normalizeTest{
-		// 3 elements
-		name: "simple-individual-consecutive-non-ordered-with-gaps",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 10, count: 1},
-			subExpression{start: 3, count: 1},
-			subExpression{start: 1, count: 1},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 1},
-			subExpression{start: 3, count: 1},
-			subExpression{start: 10, count: 1},
-		}},
-	},
-	normalizeTest{
-		// 2 elements
-		name: "simple-overlapping-ordered",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 2},
-			subExpression{start: 2, count: 2},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 3},
-		}},
-	},
-	normalizeTest{
-		// 2 elements
-		name: "simple-overlapping-not-ordered",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 2, count: 2},
-			subExpression{start: 1, count: 2},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 3},
-		}},
-	},
-	normalizeTest{
-		// 2 elements
-		name: "simple-disjoint-ordered",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 2},
-			subExpression{start: 4, count: 3},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 2},
-			subExpression{start: 4, count: 3},
-		}},
-	},
-	normalizeTest{
-		// 2 elements
-		name: "simple-overlapping-ordered-unbounded",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 2, count: 3},
-			subExpression{start: 3, count: 0},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 2, count: 0},
-		}},
-	},
-	normalizeTest{
-		// "1,1-" i.e overlapping
-		name: "simple-redundant-overlapping-zeros",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 1},
-			subExpression{start: 0, count: 0},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 0, count: 0},
-		}},
-	},
-	normalizeTest{
-		// "1,1-" i.e overlapping
-		name: "simple-redundant-overlapping",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 2, count: 1},
-			subExpression{start: 2, count: 0},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 2, count: 0},
-		}},
-	},
-	normalizeTest{
-		// 1,5-7,2-,9-10,17-
-		name: "random-complicated-expression",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 1},
-			subExpression{start: 5, count: 2},
-			subExpression{start: 2, count: 0},
-			subExpression{start: 9, count: 2},
-			subExpression{start: 17, count: 0},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 0},
-		}},
-	},
-	normalizeTest{
-		// 1,5-7,2-,9-10,17-
-		name: "match-all-1",
-		input: Expression{intervals: []subExpression{
-			subExpression{start: 1, count: 1},
-			subExpression{start: 5, count: 2},
-			subExpression{matchAll: true},
-			subExpression{start: 2, count: 0},
-			subExpression{start: 9, count: 2},
-			subExpression{start: 17, count: 0},
-		}},
-		expect: Expression{intervals: []subExpression{
-			subExpression{matchAll: true},
-		}},
-	},
-}
-
 func TestNormalize(t *testing.T) {
-	for _, test := range normalizeTests {
+
+	defaultOpts := DefaultParseOptions()
+	fmt.Println("default:", defaultOpts)
+
+	testCases := []struct {
+		name   string
+		input  Expression
+		expect Expression
+	}{
+		{
+			// 0 elements
+			name:   "simple-empty",
+			input:  Expression{},
+			expect: Expression{},
+		},
+		{
+			// 1 element
+			name: "simple-single-individual",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 2, count: 1},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 2, count: 1},
+			}},
+		},
+		{
+			// 3 elements
+			name: "simple-individual-consecutive-ordered",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 1},
+				subExpression{start: 2, count: 1},
+				subExpression{start: 3, count: 1},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 3},
+			}},
+		},
+		{
+			// 3 elements
+			name: "simple-individual-consecutive-ordered-with-gaps",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 1},
+				subExpression{start: 3, count: 1},
+				subExpression{start: 10, count: 1},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 1},
+				subExpression{start: 3, count: 1},
+				subExpression{start: 10, count: 1},
+			}},
+		},
+		{
+			// 3 elements
+			name: "simple-individual-consecutive-non-ordered-with-gaps",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 10, count: 1},
+				subExpression{start: 3, count: 1},
+				subExpression{start: 1, count: 1},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 1},
+				subExpression{start: 3, count: 1},
+				subExpression{start: 10, count: 1},
+			}},
+		},
+		{
+			// 2 elements
+			name: "simple-overlapping-ordered",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 2},
+				subExpression{start: 2, count: 2},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 3},
+			}},
+		},
+		{
+			// 2 elements
+			name: "simple-overlapping-not-ordered",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 2, count: 2},
+				subExpression{start: 1, count: 2},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 3},
+			}},
+		},
+		{
+			// 2 elements
+			name: "simple-disjoint-ordered",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 2},
+				subExpression{start: 4, count: 3},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 2},
+				subExpression{start: 4, count: 3},
+			}},
+		},
+		{
+			// 2 elements
+			name: "simple-overlapping-ordered-unbounded",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 2, count: 3},
+				subExpression{start: 3, count: 0},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 2, count: 0},
+			}},
+		},
+		{
+			// "1,1-" i.e overlapping
+			name: "simple-redundant-overlapping-zeros",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 1},
+				subExpression{start: 0, count: 0},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 0, count: 0},
+			}},
+		},
+		{
+			// "1,1-" i.e overlapping
+			name: "simple-redundant-overlapping",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 2, count: 1},
+				subExpression{start: 2, count: 0},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 2, count: 0},
+			}},
+		},
+		{
+			// 1,5-7,2-,9-10,17-
+			name: "random-complicated-expression",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 1},
+				subExpression{start: 5, count: 2},
+				subExpression{start: 2, count: 0},
+				subExpression{start: 9, count: 2},
+				subExpression{start: 17, count: 0},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 0},
+			}},
+		},
+		{
+			// 1,5-7,2-,9-10,17-
+			name: "match-all-1",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 1, count: 1},
+				subExpression{start: 5, count: 2},
+				subExpression{matchAll: true},
+				subExpression{start: 2, count: 0},
+				subExpression{start: 9, count: 2},
+				subExpression{start: 17, count: 0},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{matchAll: true},
+			}},
+		},
+		{
+			// "2,4-,7"  // redundant 7
+			name: "simple-half-open-redundant-last-value",
+			input: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 2, count: 1},
+				subExpression{start: 4, count: 0},
+				subExpression{start: 7, count: 1},
+			}},
+			expect: Expression{opts: defaultOpts, intervals: []subExpression{
+				subExpression{start: 2, count: 1},
+				subExpression{start: 4, count: 0},
+			}},
+		},
+	}
+
+	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			got := test.input.Normalize()
-			if !reflect.DeepEqual(test.expect, got) {
+			if !reflect.DeepEqual(test.expect.intervals, got.intervals) {
 				t.Fatalf("\nInput:\n\t%v\nExpect:\n\t%v\nGot:\n\t%v", test.input, test.expect, got)
 			}
 		})
@@ -508,5 +562,29 @@ func TestExpressionStringer(t *testing.T) {
 		if out := fmt.Sprintf("%v", expr); out != input {
 			t.Fatalf("Expected: %q, got: %q", input, out)
 		}
+	}
+}
+
+func TestInvalidOptionsMissingDelimiter(t *testing.T) {
+	input := "whatever"
+	opts := DefaultParseOptions()
+	opts.Delimiter = ""
+	_, err := ParseExpressionWithOptions(input, opts)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+}
+
+func TestPostProcessNormalize(t *testing.T) {
+	input := "2-4,3-5"
+	expect := []subExpression{{start: 2, count: 4}}
+	opts := DefaultParseOptions()
+	opts.PostProcessNormalize = true
+	expr, err := ParseExpressionWithOptions(input, opts)
+	if err != nil {
+		t.Fatalf("unexpected error from parser: %s", err)
+	}
+	if !reflect.DeepEqual(expect, expr.intervals) {
+		t.Fatalf("expected: %q, got: %q", expect, expr.intervals)
 	}
 }
