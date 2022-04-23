@@ -306,7 +306,6 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 	var intervals []subExpression
 	for _, intervalStr := range intervalsRaw {
 		if intervalStr != "" {
-			// empty expression '1,,3'.. not very pretty but not invalid
 			interval, err := parseSubExpression(intervalStr)
 			if err != nil {
 				return Expression{}, err
