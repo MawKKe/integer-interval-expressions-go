@@ -29,6 +29,7 @@ package integerintervalexpressions
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -322,45 +323,52 @@ func ParseExpressionWithOptions(input string, opts ParseOptions) (Expression, er
 	return e, nil
 }
 
+var subRegexMatchall = regexp.MustCompile(`^\s*\*\s*$`)
+var subRegexSingle = regexp.MustCompile(`^\s*(?P<start>\d+)\s*$`)
+var subRegexDual = regexp.MustCompile(`^\s*(?P<start>\d+)-(?P<end>\d+)$`)
+var subRegexHalfOpen = regexp.MustCompile(`^\s*(?P<start>\d+)(-)$`)
+
 func parseSubExpression(subInput string) (subExpression, error) {
-	split := strings.Split(subInput, "-")
-
-	n := len(split)
-
-	if n != 1 && n != 2 {
-		return subExpression{}, fmt.Errorf("invalid interval expression: %q", subInput)
-	}
-
-	// matchall character encountered; this short-circuits all other expressions
-	// but we parse them like normal anyways. Only when evaluating the expressio,
-	// will the effect be noticed.
-	if n == 1 && split[0] == "*" {
+	if subRegexMatchall.MatchString(subInput) {
 		return subExpression{matchAll: true}, nil
 	}
 
-	a, err := strconv.ParseInt(split[0], 10, 0)
-	if err != nil {
-		return subExpression{}, fmt.Errorf("invalid value for interval start: %w", err)
+	if m := subRegexSingle.FindStringSubmatch(subInput); m != nil {
+		start := m[subRegexSingle.SubexpIndex("start")]
+		if v, err := strconv.ParseInt(start, 10, 0); err != nil {
+			return subExpression{}, fmt.Errorf("invalid value for interval start: %w", err)
+		} else {
+			return subExpression{start: int(v), count: 1}, nil
+		}
 	}
 
-	// single digit, interval of length 1
-	if n == 1 {
-		return subExpression{start: int(a), count: 1}, nil
+	if m := subRegexHalfOpen.FindStringSubmatch(subInput); m != nil {
+		start := m[subRegexHalfOpen.SubexpIndex("start")]
+		if v, err := strconv.ParseInt(start, 10, 0); err != nil {
+			return subExpression{}, fmt.Errorf("invalid value for interval start: %w", err)
+		} else {
+			return subExpression{start: int(v), count: 0}, nil
+		}
 	}
 
-	// implicit n == 2 cases
-
-	// digit and a dash: 'x-', interval length infinite (internally denoted with 0)
-	if split[1] == "" {
-		return subExpression{start: int(a), count: 0}, nil
+	if m := subRegexDual.FindStringSubmatch(subInput); m != nil {
+		start := m[subRegexDual.SubexpIndex("start")]
+		end := m[subRegexDual.SubexpIndex("end")]
+		var vStart, vEnd int64
+		var err error
+		if vStart, err = strconv.ParseInt(start, 10, 0); err != nil {
+			return subExpression{}, fmt.Errorf("invalid value for interval start: %w", err)
+		}
+		if vEnd, err = strconv.ParseInt(end, 10, 0); err != nil {
+			return subExpression{}, fmt.Errorf("invalid value for interval end: %w", err)
+		}
+		if vEnd < vStart {
+			return subExpression{}, fmt.Errorf("invalid interval 'a-b' where a > b: %q", subInput)
+		}
+		a, b := int(vStart), int(vEnd)
+		c := b - a + 1
+		return subExpression{start: a, count: c}, nil
 	}
 
-	// two digits separated by dash
-	if b, err := strconv.ParseInt(split[1], 10, 0); err != nil {
-		return subExpression{}, fmt.Errorf("invalid value for interval end: %w", err)
-	} else if b < a {
-		return subExpression{}, fmt.Errorf("invalid interval 'a-b' where a > b: %q", subInput)
-	} else {
-		return subExpression{start: int(a), count: (int(b) - int(a)) + 1}, nil
-	}
+	return subExpression{}, fmt.Errorf("invalid syntax: %q", subInput)
 }
