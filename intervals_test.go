@@ -43,14 +43,13 @@ func ExampleParseExpression() {
 	// 9: true
 }
 
-type testCase struct {
+var testCases = []struct {
 	name      string
 	input     string
 	shouldErr bool
 	expected  Expression
-}
+}{
 
-var testCases []testCase = []testCase{
 	{
 		// note: current default options prohibit empty expressions.
 		// TODO test with AllowEmptyExpressions=true ?
