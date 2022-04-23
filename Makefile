@@ -21,8 +21,25 @@ vet:
 fix:
 	find . -type f -iname "*.go" -exec goimports -w {} +
 
+tmp:
+	mkdir -p $@
+
+tmp/coverage.data: | tmp
+	go test -coverprofile=$@
+
+.PHONY: tmp/coverage.data
+
+tmp/coverage.html: tmp/coverage.data
+	go tool cover -html=$< -o $@
+
+coverage: tmp/coverage.html
+	@echo "---"
+	@echo "Open $^ in browser to view coverage info"
+	@echo "---"
+
 clean:
 	go clean -x ./...
+	rm -rf tmp
 
 git_latest_version_tag := git describe --tags --match "v[0-9]*" --abbrev=0
 
@@ -30,4 +47,4 @@ git_latest_version_tag := git describe --tags --match "v[0-9]*" --abbrev=0
 sync-package-proxy:
 	GOPROXY=proxy.golang.org go list -m ${PROJECT_URL}@$(shell ${git_latest_version_tag})
 
-.PHONY: build test fmt vet sync-package-proxy
+.PHONY: build test fmt vet clean coverage sync-package-proxy
